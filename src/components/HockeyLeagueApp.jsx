@@ -1,5 +1,6 @@
-// src/components/HockeyLeagueApp.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { db } from "../firebase/config";
+import { ref, onValue, set, push, remove, update } from "firebase/database";
 import {
   Card,
   CardContent,
