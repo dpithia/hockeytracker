@@ -1,4 +1,3 @@
-// src/components/HockeyLeagueApp.jsx
 import React, { useState, useEffect } from "react";
 import { db } from "../firebase/config";
 import { ref, onValue, push, remove, update, set } from "firebase/database";
@@ -20,7 +19,8 @@ import {
 
 import { sendEmail, emailTemplates } from "../utils/emailService";
 
-const HockeyLeagueApp = () => {
+const HockeyLeagueApp = ({ isGuest }) => {
+  // Update this line
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState(null);
   const [players, setPlayers] = useState([]);
@@ -29,6 +29,17 @@ const HockeyLeagueApp = () => {
   const [finalizedSchedule, setFinalizedSchedule] = useState(null);
   const { user } = useAuth();
 
+  const handleSignOut = async () => {
+    try {
+      await signOutUser();
+      if (isGuest) {
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error("Error signing out:", error);
+      alert("Error signing out");
+    }
+  };
   // Fetch user data and set up realtime listeners
   useEffect(() => {
     const loadData = async () => {
@@ -86,15 +97,6 @@ const HockeyLeagueApp = () => {
 
     loadData();
   }, [user]);
-
-  const handleSignOut = async () => {
-    try {
-      await signOutUser();
-    } catch (error) {
-      console.error("Error signing out:", error);
-      alert("Error signing out");
-    }
-  };
 
   const handleAddScheduleProposal = async (event) => {
     event.preventDefault();
@@ -300,7 +302,7 @@ const HockeyLeagueApp = () => {
       <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
         <img
           src="/logo.png" // Updated path
-          className="h- md:h-12 mr-4 inline-block"
+          className="h- md:h-24 mr-8 inline-block"
           alt="Peel Region Puck Drop Logo"
         />
         Peel Region Puck Drop
