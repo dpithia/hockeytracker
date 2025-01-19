@@ -1,6 +1,9 @@
+// src/components/HockeyLeagueApp.jsx
 import React, { useState, useEffect } from "react";
 import { db } from "../firebase/config";
-import { ref, onValue, set, push, remove, update } from "firebase/database";
+import { ref, onValue, push, remove, update, set } from "firebase/database";
+import { useAuth } from "../contexts/AuthContext";
+import { signOutUser } from "../firebase/auth";
 import {
   Card,
   CardContent,
@@ -16,40 +19,128 @@ import {
 } from "./ui";
 
 import { sendEmail, emailTemplates } from "../utils/emailService";
-// Or if using the default export
-// import emailService from '../utils/emailService';
+
 const HockeyLeagueApp = () => {
+  const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState(null);
   const [players, setPlayers] = useState([]);
   const [waitlist, setWaitlist] = useState([]);
   const [scheduleProposals, setScheduleProposals] = useState([]);
   const [finalizedSchedule, setFinalizedSchedule] = useState(null);
+  const { user } = useAuth();
 
-  const handleAddScheduleProposal = (event) => {
+  // Fetch user data and set up realtime listeners
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // User data listener
+        if (user) {
+          const userRef = ref(db, `users/${user.uid}`);
+          const unsubUser = onValue(userRef, (snapshot) => {
+            setUserData(snapshot.val());
+          });
+        }
+
+        // Players listener
+        const playersRef = ref(db, "players");
+        const unsubPlayers = onValue(playersRef, (snapshot) => {
+          const data = snapshot.val();
+          setPlayers(data ? Object.values(data) : []);
+        });
+
+        // Waitlist listener
+        const waitlistRef = ref(db, "waitlist");
+        const unsubWaitlist = onValue(waitlistRef, (snapshot) => {
+          const data = snapshot.val();
+          setWaitlist(data ? Object.values(data) : []);
+        });
+
+        // Schedule proposals listener
+        const proposalsRef = ref(db, "scheduleProposals");
+        const unsubProposals = onValue(proposalsRef, (snapshot) => {
+          const data = snapshot.val();
+          setScheduleProposals(data ? Object.values(data) : []);
+        });
+
+        // Finalized schedule listener
+        const finalizedRef = ref(db, "finalizedSchedule");
+        const unsubFinalized = onValue(finalizedRef, (snapshot) => {
+          setFinalizedSchedule(snapshot.val());
+        });
+
+        setLoading(false);
+
+        // Cleanup function
+        return () => {
+          if (user) unsubUser();
+          unsubPlayers();
+          unsubWaitlist();
+          unsubProposals();
+          unsubFinalized();
+        };
+      } catch (error) {
+        console.error("Error loading data:", error);
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [user]);
+
+  const handleSignOut = async () => {
+    try {
+      await signOutUser();
+    } catch (error) {
+      console.error("Error signing out:", error);
+      alert("Error signing out");
+    }
+  };
+
+  const handleAddScheduleProposal = async (event) => {
     event.preventDefault();
     const formData = new FormData(event.target);
     const newProposal = {
       date: formData.get("date"),
       time: formData.get("time"),
-      votes: 0, // Initially, no votes
+      votes: 0,
+      createdAt: new Date().toISOString(),
     };
-    setScheduleProposals([...scheduleProposals, newProposal]);
-    event.target.reset();
+
+    try {
+      await push(ref(db, "scheduleProposals"), newProposal);
+      event.target.reset();
+    } catch (error) {
+      console.error("Error adding proposal:", error);
+      alert("Error adding proposal");
+    }
   };
 
-  const handleVote = (index) => {
-    setScheduleProposals(
-      scheduleProposals.map((proposal, i) =>
-        i === index ? { ...proposal, votes: proposal.votes + 1 } : proposal
-      )
-    );
+  const handleVote = async (proposalId) => {
+    try {
+      const proposalRef = ref(db, `scheduleProposals/${proposalId}`);
+      await update(proposalRef, {
+        votes:
+          (scheduleProposals.find((p) => p.id === proposalId)?.votes || 0) + 1,
+      });
+    } catch (error) {
+      console.error("Error updating votes:", error);
+      alert("Error updating votes");
+    }
   };
 
-  const finalizeSchedule = (index) => {
-    const selectedProposal = scheduleProposals[index];
-    setFinalizedSchedule(selectedProposal);
-    alert(
-      `Schedule finalized: ${selectedProposal.date} at ${selectedProposal.time}`
-    );
+  const finalizeSchedule = async (proposalId) => {
+    try {
+      const selectedProposal = scheduleProposals.find(
+        (p) => p.id === proposalId
+      );
+      await set(ref(db, "finalizedSchedule"), selectedProposal);
+      alert(
+        `Schedule finalized: ${selectedProposal.date} at ${selectedProposal.time}`
+      );
+    } catch (error) {
+      console.error("Error finalizing schedule:", error);
+      alert("Error finalizing schedule");
+    }
   };
 
   const handleAddPlayer = async (event) => {
@@ -62,92 +153,75 @@ const HockeyLeagueApp = () => {
       joinedAt: new Date().toISOString(),
     };
 
-    console.log("Attempting to add player:", newPlayer);
-
-    if (players.length < 20) {
-      try {
+    try {
+      if (players.length < 20) {
         const emailTemplate = emailTemplates.activeRosterJoin(newPlayer.name);
-        console.log("Using email template:", emailTemplate);
-
         const emailSent = await sendEmail(newPlayer.email, emailTemplate);
 
-        console.log("Email sent result:", emailSent);
+        await push(ref(db, "players"), newPlayer);
 
-        if (emailSent) {
-          console.log("Email sent successfully");
-          setPlayers([...players, newPlayer]);
-        } else {
-          console.error("Failed to send email");
+        if (!emailSent) {
           alert("Player added, but email failed to send");
-          setPlayers([...players, newPlayer]);
         }
-      } catch (error) {
-        console.error("Comprehensive error adding player:", error);
-        alert("Error adding player");
-      }
-    } else {
-      // Similar logic for waitlist with added logging
-      try {
+      } else {
         const emailTemplate = emailTemplates.waitlistJoin(newPlayer.name);
-        console.log("Using waitlist email template:", emailTemplate);
-
         const emailSent = await sendEmail(newPlayer.email, emailTemplate);
 
-        console.log("Waitlist email sent result:", emailSent);
+        await push(ref(db, "waitlist"), newPlayer);
 
-        if (emailSent) {
-          console.log("Waitlist email sent successfully");
-          setWaitlist([...waitlist, newPlayer]);
-        } else {
-          console.error("Failed to send waitlist email");
+        if (!emailSent) {
           alert("Player added to waitlist, but email failed to send");
-          setWaitlist([...waitlist, newPlayer]);
         }
-      } catch (error) {
-        console.error("Error adding player to waitlist:", error);
-        alert("Error adding player to waitlist");
       }
-    }
-
-    event.target.reset();
-  };
-
-  const togglePaymentStatus = (index, isWaitlist) => {
-    if (isWaitlist) {
-      setWaitlist(
-        waitlist.map((player, i) =>
-          i === index ? { ...player, hasPaid: !player.hasPaid } : player
-        )
-      );
-    } else {
-      setPlayers(
-        players.map((player, i) =>
-          i === index ? { ...player, hasPaid: !player.hasPaid } : player
-        )
-      );
+      event.target.reset();
+    } catch (error) {
+      console.error("Error adding player:", error);
+      alert("Error adding player");
     }
   };
 
-  const removePlayer = (index, isWaitlist = false) => {
-    if (isWaitlist) {
-      setWaitlist(waitlist.filter((_, i) => i !== index));
-    } else {
-      setPlayers(players.filter((_, i) => i !== index));
+  const togglePaymentStatus = async (playerId, isWaitlist) => {
+    try {
+      const path = isWaitlist ? "waitlist" : "players";
+      const playerRef = ref(db, `${path}/${playerId}`);
+      const player = isWaitlist
+        ? waitlist.find((p) => p.id === playerId)
+        : players.find((p) => p.id === playerId);
 
-      if (waitlist.length > 0) {
+      await update(playerRef, {
+        hasPaid: !player.hasPaid,
+      });
+    } catch (error) {
+      console.error("Error toggling payment status:", error);
+      alert("Error updating payment status");
+    }
+  };
+
+  const removePlayer = async (playerId, isWaitlist = false) => {
+    try {
+      const path = isWaitlist ? "waitlist" : "players";
+      await remove(ref(db, `${path}/${playerId}`));
+
+      if (!isWaitlist && waitlist.length > 0) {
         const [promotedPlayer, ...remainingWaitlist] = waitlist;
-        setPlayers((prevPlayers) => [...prevPlayers, promotedPlayer]);
-        setWaitlist(remainingWaitlist);
+        await push(ref(db, "players"), {
+          ...promotedPlayer,
+          joinedAt: new Date().toISOString(),
+        });
+        await remove(ref(db, `waitlist/${promotedPlayer.id}`));
         alert(`${promotedPlayer.name} has been promoted from the waitlist!`);
       }
+    } catch (error) {
+      console.error("Error removing player:", error);
+      alert("Error removing player");
     }
   };
 
   const PlayerList = ({ players, onRemove, onTogglePayment, isWaitlist }) => (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {players.map((player, index) => (
+      {players.map((player) => (
         <Card
-          key={index}
+          key={player.id}
           className={`bg-white ${
             player.hasPaid ? "border-2 border-green-500" : ""
           }`}
@@ -160,7 +234,7 @@ const HockeyLeagueApp = () => {
                   <p className="text-gray-600 text-sm">{player.email}</p>
                 </div>
                 <Button
-                  onClick={() => onRemove(index, isWaitlist)}
+                  onClick={() => onRemove(player.id, isWaitlist)}
                   className="bg-red-500 hover:bg-red-600 text-sm px-3 py-1"
                 >
                   Remove
@@ -179,7 +253,7 @@ const HockeyLeagueApp = () => {
                   </span>
                 </span>
                 <Button
-                  onClick={() => onTogglePayment(index, isWaitlist)}
+                  onClick={() => onTogglePayment(player.id, isWaitlist)}
                   className={`text-sm px-3 py-1 ${
                     player.hasPaid
                       ? "bg-yellow-500 hover:bg-yellow-600"
@@ -196,8 +270,33 @@ const HockeyLeagueApp = () => {
     </div>
   );
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+      {/* Header with user info and logout */}
+      <div className="bg-white shadow-md px-6 py-4 mb-8 flex justify-between items-center">
+        <div className="flex items-center space-x-4">
+          {userData && (
+            <span className="text-lg font-medium">
+              {userData.firstName} {userData.lastName}
+            </span>
+          )}
+        </div>
+        <Button
+          onClick={handleSignOut}
+          className="bg-red-500 hover:bg-red-600 text-white"
+        >
+          Sign Out
+        </Button>
+      </div>
+
       <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
         <img
           src="src/assets/logo.png"
@@ -205,8 +304,8 @@ const HockeyLeagueApp = () => {
         />
         Peel Region Puck Drop
       </h1>
+
       <div className="container mx-auto px-4 max-w-5xl">
-        {/* Other components remain the same */}
         <Card className="mb-8 shadow-lg">
           <CardHeader className="text-center border-b bg-gray-50">
             <CardTitle className="text-xl text-gray-800">
@@ -267,9 +366,9 @@ const HockeyLeagueApp = () => {
               </p>
             ) : (
               <div className="space-y-4">
-                {scheduleProposals.map((proposal, index) => (
+                {scheduleProposals.map((proposal) => (
                   <div
-                    key={index}
+                    key={proposal.id}
                     className="flex justify-between items-center p-4 border rounded"
                   >
                     <div>
@@ -280,13 +379,13 @@ const HockeyLeagueApp = () => {
                     </div>
                     <div className="space-x-2">
                       <Button
-                        onClick={() => handleVote(index)}
+                        onClick={() => handleVote(proposal.id)}
                         className="bg-green-500 hover:bg-green-600 text-white px-3 py-1"
                       >
                         Vote
                       </Button>
                       <Button
-                        onClick={() => finalizeSchedule(index)}
+                        onClick={() => finalizeSchedule(proposal.id)}
                         className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1"
                       >
                         Finalize
@@ -300,7 +399,7 @@ const HockeyLeagueApp = () => {
         </Card>
 
         {finalizedSchedule && (
-          <Card className="shadow-lg">
+          <Card className="shadow-lg mb-8">
             <CardHeader className="text-center border-b bg-gray-50">
               <CardTitle className="text-xl text-gray-800">
                 Finalized Schedule
@@ -314,8 +413,7 @@ const HockeyLeagueApp = () => {
             </CardContent>
           </Card>
         )}
-      </div>
-      <div className="container mx-auto px-4 max-w-5xl">
+
         <Card className="mb-8 shadow-lg">
           <CardHeader className="text-center border-b bg-gray-50">
             <CardTitle className="text-xl text-gray-800">

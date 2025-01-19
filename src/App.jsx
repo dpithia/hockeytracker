@@ -1,14 +1,20 @@
 // src/App.jsx
 import React from "react";
+import { AuthProvider } from "./contexts/AuthContext";
 import HockeyLeagueApp from "./components/HockeyLeagueApp";
+import Login from "./components/Login";
+import { useAuth } from "./contexts/AuthContext";
+
+const AuthenticatedApp = () => {
+  const { user } = useAuth();
+  return user ? <HockeyLeagueApp /> : <Login />;
+};
 
 const App = () => {
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold"></h1>
-      <p></p>
-      <HockeyLeagueApp />
-    </div>
+    <AuthProvider>
+      <AuthenticatedApp />
+    </AuthProvider>
   );
 };
 
