@@ -17,7 +17,8 @@ import {
   Button,
 } from "./ui";
 
-const Login = () => {
+const Login = ({ onSkip }) => {
+  // Add onSkip prop
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -62,7 +63,6 @@ const Login = () => {
   const handleGoogleSignIn = async () => {
     try {
       const userCredential = await signInWithGoogle();
-      // Check if it's a new user
       const nameParts = userCredential.user.displayName?.split(" ") || ["", ""];
       await saveUserProfile(userCredential.user.uid, {
         firstName: nameParts[0],
@@ -129,15 +129,32 @@ const Login = () => {
             </div>
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <div className="space-y-4">
-              <Button type="submit" className="w-full">
+              <Button
+                type="submit"
+                className="w-full bg-blue-600 hover:bg-blue-700"
+              >
                 {isRegistering ? "Register" : "Sign In"}
               </Button>
+
               <Button
                 type="button"
                 onClick={handleGoogleSignIn}
-                className="w-full bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="w-full bg-white border-2 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium flex items-center justify-center gap-2"
               >
+                <img
+                  src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                  alt="Google"
+                  className="w-6 h-6"
+                />
                 Sign in with Google
+              </Button>
+
+              <Button
+                type="button"
+                onClick={onSkip}
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700"
+              >
+                Continue as Guest
               </Button>
             </div>
           </form>

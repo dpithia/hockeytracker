@@ -299,8 +299,9 @@ const HockeyLeagueApp = () => {
 
       <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
         <img
-          src="src/assets/logo.png"
+          src="/logo.png" // Updated path
           className="h- md:h-12 mr-4 inline-block"
+          alt="Peel Region Puck Drop Logo"
         />
         Peel Region Puck Drop
       </h1>
