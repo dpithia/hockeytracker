@@ -56,15 +56,17 @@ const Login = ({ onSkip }) => {
       setError(error.message);
     }
   };
-
   const handleGoogleSignIn = async () => {
     try {
-      const userCredential = await signInWithGoogle();
-      const nameParts = userCredential.user.displayName?.split(" ") || ["", ""];
-      await saveUserProfile(userCredential.user.uid, {
+      const result = await signInWithGoogle();
+      if (!result) return; // User closed the popup
+
+      const userCredential = result.user;
+      const nameParts = userCredential.displayName?.split(" ") || ["", ""];
+      await saveUserProfile(userCredential.uid, {
         firstName: nameParts[0],
         lastName: nameParts[nameParts.length - 1],
-        email: userCredential.user.email,
+        email: userCredential.email,
         createdAt: new Date().toISOString(),
       });
     } catch (error) {

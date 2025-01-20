@@ -181,27 +181,22 @@ const HockeyLeagueApp = ({ isGuest }) => {
       alert("Error adding player");
     }
   };
-  const togglePaymentStatus = async (playerId, isWaitlist) => {
-    if (!playerId) {
-      console.error("No player ID provided");
-      return;
-    }
 
+  const togglePaymentStatus = (index, isWaitlist) => {
     try {
-      const path = isWaitlist ? "waitlist" : "players";
-      const playerRef = ref(db, `${path}/${playerId}`);
-      const player = isWaitlist
-        ? waitlist.find((p) => p.id === playerId)
-        : players.find((p) => p.id === playerId);
-
-      if (!player) {
-        console.error("Player not found");
-        return;
+      if (isWaitlist) {
+        setWaitlist(
+          waitlist.map((player, i) =>
+            i === index ? { ...player, hasPaid: !player.hasPaid } : player
+          )
+        );
+      } else {
+        setPlayers(
+          players.map((player, i) =>
+            i === index ? { ...player, hasPaid: !player.hasPaid } : player
+          )
+        );
       }
-
-      await update(playerRef, {
-        hasPaid: !player.hasPaid,
-      });
     } catch (error) {
       console.error("Error toggling payment status:", error);
       alert("Error updating payment status");
@@ -230,54 +225,57 @@ const HockeyLeagueApp = ({ isGuest }) => {
 
   const PlayerList = ({ players, onRemove, onTogglePayment, isWaitlist }) => (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {players.map((player) => (
-        <Card
-          key={player.id}
-          className={`bg-white ${
-            player.hasPaid ? "border-2 border-green-500" : ""
-          }`}
-        >
-          <CardContent className="p-4">
-            <div className="space-y-3">
-              <div className="flex justify-between items-start">
-                <div className="space-y-1">
-                  <h3 className="font-medium text-lg">{player.name}</h3>
-                  <p className="text-gray-600 text-sm">{player.email}</p>
-                </div>
-                <Button
-                  onClick={() => onRemove(player.id, isWaitlist)}
-                  className="bg-red-500 hover:bg-red-600 text-sm px-3 py-1"
-                >
-                  Remove
-                </Button>
-              </div>
-
-              <div className="flex justify-between items-center pt-2 border-t">
-                <span className="text-sm font-medium">
-                  Payment Status:
-                  <span
-                    className={
-                      player.hasPaid ? "text-green-600" : "text-red-600"
-                    }
+      {players.map((player, index) => {
+        const uniqueKey = player.id || `${player.email}-${index}`;
+        return (
+          <Card
+            key={uniqueKey}
+            className={`bg-white ${
+              player.hasPaid ? "border-2 border-green-500" : ""
+            }`}
+          >
+            <CardContent className="p-4">
+              <div className="space-y-3">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
+                    <h3 className="font-medium text-lg">{player.name}</h3>
+                    <p className="text-gray-600 text-sm">{player.email}</p>
+                  </div>
+                  <Button
+                    onClick={() => onRemove(index, isWaitlist)}
+                    className="bg-red-500 hover:bg-red-600 text-sm px-3 py-1"
                   >
-                    {player.hasPaid ? " Paid" : " Unpaid"}
+                    Remove
+                  </Button>
+                </div>
+
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <span className="text-sm font-medium">
+                    Payment Status:
+                    <span
+                      className={
+                        player.hasPaid ? "text-green-600" : "text-red-600"
+                      }
+                    >
+                      {player.hasPaid ? " Paid" : " Unpaid"}
+                    </span>
                   </span>
-                </span>
-                <Button
-                  onClick={() => onTogglePayment(player.id, isWaitlist)}
-                  className={`text-sm px-3 py-1 ${
-                    player.hasPaid
-                      ? "bg-yellow-500 hover:bg-yellow-600"
-                      : "bg-green-500 hover:bg-green-600"
-                  }`}
-                >
-                  {player.hasPaid ? "Mark Unpaid" : "Mark Paid"}
-                </Button>
+                  <Button
+                    onClick={() => onTogglePayment(index, isWaitlist)}
+                    className={`text-sm px-3 py-1 ${
+                      player.hasPaid
+                        ? "bg-yellow-500 hover:bg-yellow-600"
+                        : "bg-green-500 hover:bg-green-600"
+                    }`}
+                  >
+                    {player.hasPaid ? "Mark Unpaid" : "Mark Paid"}
+                  </Button>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 
