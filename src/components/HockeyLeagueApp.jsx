@@ -181,14 +181,23 @@ const HockeyLeagueApp = ({ isGuest }) => {
       alert("Error adding player");
     }
   };
-
   const togglePaymentStatus = async (playerId, isWaitlist) => {
+    if (!playerId) {
+      console.error("No player ID provided");
+      return;
+    }
+
     try {
       const path = isWaitlist ? "waitlist" : "players";
       const playerRef = ref(db, `${path}/${playerId}`);
       const player = isWaitlist
         ? waitlist.find((p) => p.id === playerId)
         : players.find((p) => p.id === playerId);
+
+      if (!player) {
+        console.error("Player not found");
+        return;
+      }
 
       await update(playerRef, {
         hasPaid: !player.hasPaid,

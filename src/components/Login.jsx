@@ -1,4 +1,3 @@
-// src/components/Login.jsx
 import React, { useState } from "react";
 import {
   signInWithGoogle,
@@ -18,7 +17,6 @@ import {
 } from "./ui";
 
 const Login = ({ onSkip }) => {
-  // Add onSkip prop
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -38,7 +36,6 @@ const Login = ({ onSkip }) => {
   const handleEmailAuth = async (e) => {
     e.preventDefault();
     setError("");
-
     try {
       if (isRegistering) {
         if (!firstName || !lastName) {
@@ -76,10 +73,10 @@ const Login = ({ onSkip }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="max-w-md w-full space-y-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+      <Card className="max-w-md w-full space-y-8 bg-white shadow-lg rounded-lg">
         <CardHeader>
-          <CardTitle className="text-center text-3xl font-bold">
+          <CardTitle className="text-center text-3xl font-bold text-gray-800">
             {isRegistering ? "Create Account" : "Sign In"}
           </CardTitle>
         </CardHeader>
@@ -88,7 +85,9 @@ const Login = ({ onSkip }) => {
             {isRegistering && (
               <>
                 <div>
-                  <Label htmlFor="firstName">First Name</Label>
+                  <Label htmlFor="firstName" className="text-gray-700">
+                    First Name
+                  </Label>
                   <Input
                     id="firstName"
                     value={firstName}
@@ -97,7 +96,9 @@ const Login = ({ onSkip }) => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lastName">Last Name</Label>
+                  <Label htmlFor="lastName" className="text-gray-700">
+                    Last Name
+                  </Label>
                   <Input
                     id="lastName"
                     value={lastName}
@@ -108,7 +109,9 @@ const Login = ({ onSkip }) => {
               </>
             )}
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-gray-700">
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -118,7 +121,9 @@ const Login = ({ onSkip }) => {
               />
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-gray-700">
+                Password
+              </Label>
               <Input
                 id="password"
                 type="password"
@@ -127,11 +132,11 @@ const Login = ({ onSkip }) => {
                 required
               />
             </div>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {error && <p className="text-red-600 text-sm">{error}</p>}
             <div className="space-y-4">
               <Button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700"
+                className="w-full bg-blue-600 text-white hover:bg-blue-700"
               >
                 {isRegistering ? "Register" : "Sign In"}
               </Button>
@@ -139,7 +144,7 @@ const Login = ({ onSkip }) => {
               <Button
                 type="button"
                 onClick={handleGoogleSignIn}
-                className="w-full bg-white border-2 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium flex items-center justify-center gap-2"
+                className="w-full bg-white border-2 border-gray-300 hover:bg-gray-50 text-gray-900 font-semibold flex items-center justify-center gap-2"
               >
                 <img
                   src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
@@ -152,7 +157,7 @@ const Login = ({ onSkip }) => {
               <Button
                 type="button"
                 onClick={onSkip}
-                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700"
+                className="w-full bg-gray-200 text-gray-800 hover:bg-gray-300"
               >
                 Continue as Guest
               </Button>
