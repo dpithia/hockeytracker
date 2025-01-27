@@ -3,7 +3,7 @@
 
 
 Welcome to the Hockey Group Web App, a platform designed to streamline the organization of weekly pick-up hockey games. This app allows players to vote on the game schedule, manage payments, and limit the number of participants for each game.
-
+<img src="https://ibb.co/6bMDKPq">
 
 
 
